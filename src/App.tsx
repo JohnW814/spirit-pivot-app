@@ -14,13 +14,19 @@ import {
   Infinity,
   RefreshCw,
   MapPin,
-  Microscope,
   Sparkles,
   AlertTriangle,
+  Star,
+  Calendar,
+  Clock,
+  Monitor,
+  Shield,
+  Crown,
+  BookOpen,
 } from "lucide-react";
 
 // ============================================================================
-// 1. 絕對精準命理核心 (Precision Engine v4)
+// 1. 命理核心引擎 (Astrology Engine Core)
 // ============================================================================
 
 const HEAVENLY_STEMS = [
@@ -50,24 +56,23 @@ const EARTHLY_BRANCHES = [
   "亥",
 ];
 
-// ★★★ 絕對錨點校正 (User Verified) ★★★
-// 基準日：2025-12-20 12:00:00 = 癸亥日
-const getPrecisionGanZhi = (dateObj) => {
+/**
+ * 萬年曆錨點校正
+ * 基準日：2025-12-20 12:00:00 = 癸亥日 (Stem:9, Branch:11)
+ */
+const getPrecisionGanZhi = (dateObj: Date) => {
   const anchorDate = new Date("2025-12-20T12:00:00");
   const targetDate = new Date(dateObj);
-  // 設定目標時間為中午 12:00，確保跨日計算準確
+  // 設定目標時間為中午 12:00，消除時區造成的日期偏移
   targetDate.setHours(12, 0, 0, 0);
 
-  // 計算天數差 (使用 Math.round 避免時區導致的小數點誤差)
   const dayDiff = Math.round(
     (targetDate.getTime() - anchorDate.getTime()) / (1000 * 60 * 60 * 24)
   );
 
-  // 基準日索引：癸(9), 亥(11)
-  const baseStemIndex = 9;
-  const baseBranchIndex = 11;
+  const baseStemIndex = 9; // 癸
+  const baseBranchIndex = 11; // 亥
 
-  // 推算目標日索引 (處理負數迴圈)
   let stemIndex = (baseStemIndex + dayDiff) % 10;
   if (stemIndex < 0) stemIndex += 10;
 
@@ -81,25 +86,88 @@ const getPrecisionGanZhi = (dateObj) => {
   };
 };
 
-// 丙午人(天相在巳) 真實命盤結構
-// main: 主星陣列，用於與四化比對
-const NATAL_CHART = {
-  子: { palace: "疾厄宮", stars: "太陽(陷)", main: ["太陽"] },
-  丑: { palace: "財帛宮", stars: "天府(得)", main: ["天府"] },
-  寅: { palace: "子女宮", stars: "天機(旺)·太陰(旺)", main: ["天機", "太陰"] },
-  卯: { palace: "夫妻宮", stars: "紫微(旺)·貪狼(平)", main: ["紫微", "貪狼"] },
-  辰: { palace: "兄弟宮", stars: "巨門(陷)", main: ["巨門"] },
-  巳: { palace: "本命宮", stars: "天相(得)·祿存·鈴星", main: ["天相"] },
-  午: { palace: "父母宮", stars: "天梁(廟)", main: ["天梁"] },
-  未: { palace: "福德宮", stars: "廉貞(廟)·七殺(廟)", main: ["廉貞", "七殺"] },
-  申: { palace: "田宅宮", stars: "空宮 (借機陰)", main: ["天機", "太陰"] },
-  酉: { palace: "官祿宮", stars: "空宮 (借紫貪)", main: ["紫微", "貪狼"] },
-  戌: { palace: "交友宮", stars: "天同(平)", main: ["天同"] },
-  亥: { palace: "遷移宮", stars: "武曲(平)·破軍(平)", main: ["武曲", "破軍"] },
+// ============================================================================
+// 2. 用戶專屬命盤資料庫 (User Natal Chart Data)
+// ============================================================================
+
+// 1966 丙午年 六月 寅時 (天相在巳)
+const FULL_NATAL_CHART: any = {
+  子: { palace: "疾厄宮", main: ["太陽"], borrow: [], minor: [], status: "陷" },
+  丑: {
+    palace: "財帛宮",
+    main: ["天府"],
+    borrow: [],
+    minor: ["地劫"],
+    status: "得",
+  },
+  寅: {
+    palace: "子女宮",
+    main: ["天機", "太陰"],
+    borrow: [],
+    minor: [],
+    status: "旺",
+  },
+  卯: {
+    palace: "夫妻宮",
+    main: ["紫微", "貪狼"],
+    borrow: [],
+    minor: ["火星"],
+    status: "旺平",
+  },
+  辰: {
+    palace: "兄弟宮",
+    main: ["巨門"],
+    borrow: [],
+    minor: ["陀羅"],
+    status: "陷",
+  },
+  巳: {
+    palace: "本命宮",
+    main: ["天相"],
+    borrow: [],
+    minor: ["祿存", "鈴星", "右弼"],
+    status: "得",
+  },
+  午: {
+    palace: "父母宮",
+    main: ["天梁"],
+    borrow: [],
+    minor: ["擎羊", "文曲"],
+    status: "廟",
+  },
+  未: {
+    palace: "福德宮",
+    main: ["廉貞", "七殺"],
+    borrow: [],
+    minor: [],
+    status: "廟",
+  },
+  申: {
+    palace: "田宅宮",
+    main: [],
+    borrow: ["天機", "太陰"],
+    minor: ["文昌"],
+    status: "借星",
+  },
+  酉: {
+    palace: "官祿宮",
+    main: [],
+    borrow: ["紫微", "貪狼"],
+    minor: ["左輔", "天鉞", "地空"],
+    status: "借星",
+  },
+  戌: { palace: "交友宮", main: ["天同"], borrow: [], minor: [], status: "平" },
+  亥: {
+    palace: "遷移宮",
+    main: ["武曲", "破軍"],
+    borrow: [],
+    minor: ["天魁"],
+    status: "平",
+  },
 };
 
 // 十天干四化表
-const SI_HUA_TABLE = {
+const SI_HUA_TABLE: any = {
   甲: { lu: "廉貞", quan: "破軍", ke: "武曲", ji: "太陽" },
   乙: { lu: "天機", quan: "天梁", ke: "紫微", ji: "太陰" },
   丙: { lu: "天同", quan: "天機", ke: "文昌", ji: "廉貞" },
@@ -112,97 +180,183 @@ const SI_HUA_TABLE = {
   癸: { lu: "破軍", quan: "巨門", ke: "太陰", ji: "貪狼" },
 };
 
-// 產生內容：分離「上方顯示」與「下方解析」並處理顏色邏輯
-const generateDailyContent = (stars, palace, siHua, stem, mainStars) => {
-  // A. 上方顯示：僅摘要
-  let displayStars = stars;
-  let displaySiHua = "";
-  let highlightColor = "text-emerald-500"; // 預設平穩色 (綠)
-  let borderColor = "border-emerald-900/30";
-  let bgOverlay = "bg-emerald-500/50";
+// 星曜深度解析庫 (上市級內容)
+const STAR_INTERPRETATIONS: any = {
+  // 主星
+  紫微: "北斗帝座，主官貴。展現領袖魅力，包容統御，適合決策與管理。",
+  天機: "南斗益算，主智慧。善用智慧規劃，靈動多變，但忌鑽牛角尖。",
+  太陽: "中天主星，主博愛。付出不求回報，燃燒自己照亮別人，需防心力透支。",
+  武曲: "北斗財星，主剛毅。務實執行，處理財務果斷，但稍顯孤獨。",
+  天同: "南斗福星，主協調。赤子之心，以柔克剛，適合享受生活與溝通。",
+  廉貞: "北斗囚星，主次桃花。能量複雜，專注工作可化為權威，否則易生雜念。",
+  天府: "南斗令主，主庫藏。穩健守成，盤點資源，寬厚待人，不宜冒進。",
+  太陰: "中天財星，主溫柔。溫柔內斂，直覺敏銳，適合照顧家庭與內觀。",
+  貪狼: "北斗桃花，主慾望。多才多藝，長袖善舞。將慾望昇華為學習動力。",
+  巨門: "北斗暗星，主口舌。謹言慎行，多聽少說，觀察入微，防是非。",
+  天相: "南斗印星，主官祿。居中協調，展現平衡與輔佐之能，優雅得體。",
+  天梁: "南斗蔭星，主壽。蔭庇眾生，公正無私，化解困難，呈祥解厄。",
+  七殺: "南斗將星，主肅殺。獨當一面，勇於突破，剛毅果決，但忌魯莽。",
+  破軍: "北斗耗星，主變動。除舊佈新，不破不立，勇敢變革，先破後成。",
+  // 輔星 (六吉)
+  左輔: "【吉】貴人星，易得平輩或朋友助力，適合團隊合作，擴展人脈。",
+  右弼: "【吉】貴人星，易得平輩助力，但需防感情上的多角關係。",
+  文昌: "【吉】科名之星，正統學術，有利文書、契約、學習，思緒清晰。",
+  文曲: "【吉】科名之星，異路功名，有利口才、藝術、創意，靈感豐富。",
+  天魁: "【吉】陽貴人，易得男性長輩或上司提攜，機遇佳，遇難呈祥。",
+  天鉞: "【吉】陰貴人，易得女性長輩或暗中助力，機遇佳，適合合作。",
+  祿存: "【吉】天祿之星，能解厄制化，增添財氣與穩定，為流日帶來實質收穫。",
+  // 煞星 (六煞)
+  擎羊: "【煞】化氣為刑，具衝擊力與決斷力。宜從事技術性工作，防受傷或爭執。",
+  陀羅: "【煞】化氣為忌，做事易有拖延或反覆。需更有耐心，適合鑽研細節。",
+  火星: "【煞】爆發力強，情緒易波動。宜速戰速決，忌衝動壞事，需防突發火氣。",
+  鈴星: "【煞】反應機敏，但心思深沉。適合冷靜策劃，需防內心生悶氣。",
+  地空: "【煞】主精神耗損，亦主靈感乍現。思想跳脫，利於哲學玄學，不利世俗財利。",
+  地劫: "【煞】主物質破耗，波動劇烈。有反傳統特質。今日財運不穩，忌投機。",
+};
 
-  // 檢查主星是否化忌或化祿
-  const isJi = mainStars.some((star) => star === siHua.ji);
-  const isLu = mainStars.some((star) => star === siHua.lu);
+// 內容生成邏輯
+const generateDailyContent = (chartData: any, siHua: any, stem: string) => {
+  const { main, borrow, minor, status, palace } = chartData;
+  // 決定運算用星曜：若本宮無主星，則借對宮
+  const calcStars = main.length > 0 ? main : borrow;
 
-  if (isJi) {
-    displaySiHua = `${siHua.ji}化忌 ⚠️`;
-    highlightColor = "text-rose-500"; // 警示色 (紅)
-    borderColor = "border-rose-900/30";
-    bgOverlay = "bg-rose-500/50";
-  } else if (isLu) {
-    displaySiHua = `${siHua.lu}化祿 ✨`;
-    highlightColor = "text-amber-500"; // 吉祥色 (金)
-    borderColor = "border-amber-900/30";
-    bgOverlay = "bg-amber-500/50";
+  // 1. 整理顯示星曜 (Display Stars)
+  let displayStars = "";
+  if (main.length > 0) {
+    displayStars = main.join(" · ");
+    if (minor.length > 0) displayStars += " · " + minor.join(" · ");
   } else {
-    displaySiHua = "平穩";
+    displayStars = `(借)${borrow.join("·")}`;
+    if (minor.length > 0) displayStars += " · " + minor.join(" · ");
   }
 
-  // B. 下方解析：詳細心法
+  // 2. 掃描四化 (Scan Si-Hua) - 檢查所有星曜
+  const allStarsToCheck = [...calcStars, ...minor];
+
+  const hits = {
+    lu: allStarsToCheck.find((s: any) => s === siHua.lu),
+    quan: allStarsToCheck.find((s: any) => s === siHua.quan),
+    ke: allStarsToCheck.find((s: any) => s === siHua.ke),
+    ji: allStarsToCheck.find((s: any) => s === siHua.ji),
+  };
+
+  // 3. 儀表板狀態設定
+  let displaySiHua = [];
+  let highlightColor = "text-emerald-400";
+  let borderColor = "border-emerald-500/20";
+  let bgOverlay = "bg-emerald-500/10";
+  let statusBadgeBg = "bg-emerald-900/30";
+  let statusBadgeBorder = "border-emerald-500/30";
+
+  if (hits.lu) displaySiHua.push(`${hits.lu}祿`);
+  if (hits.quan) displaySiHua.push(`${hits.quan}權`);
+  if (hits.ke) displaySiHua.push(`${hits.ke}科`);
+  if (hits.ji) displaySiHua.push(`${hits.ji}忌`);
+
+  let statusText = displaySiHua.length > 0 ? displaySiHua.join("  ") : "平穩";
+
+  // 顏色優先級：忌 > 祿 > 權 > 科 > 平
+  if (hits.ji) {
+    highlightColor = "text-rose-400";
+    borderColor = "border-rose-500/20";
+    bgOverlay = "bg-rose-500/10";
+    statusBadgeBg = "bg-rose-900/30";
+    statusBadgeBorder = "border-rose-500/30";
+  } else if (hits.lu) {
+    highlightColor = "text-amber-400";
+    borderColor = "border-amber-500/20";
+    bgOverlay = "bg-amber-500/10";
+    statusBadgeBg = "bg-amber-900/30";
+    statusBadgeBorder = "border-amber-500/30";
+  } else if (hits.quan) {
+    highlightColor = "text-purple-400";
+    borderColor = "border-purple-500/20";
+    bgOverlay = "bg-purple-500/10";
+    statusBadgeBg = "bg-purple-900/30";
+    statusBadgeBorder = "border-purple-500/30";
+  } else if (hits.ke) {
+    highlightColor = "text-sky-400";
+    borderColor = "border-sky-500/20";
+    bgOverlay = "bg-sky-500/10";
+    statusBadgeBg = "bg-sky-900/30";
+    statusBadgeBorder = "border-sky-500/30";
+  }
+
+  // 4. 生成知行合一文字 (Action Text)
   let actionText = "";
 
-  // 1. 星曜特質解析
-  if (stars.includes("紫微"))
-    actionText += "帝星降臨，氣勢強旺。適合掌握主導權，展現領袖魅力。";
-  else if (stars.includes("貪狼"))
-    actionText += "桃花人緣旺盛，靈感強烈。將對物質的渴望轉化為對智慧的追求。";
-  else if (stars.includes("天機"))
-    actionText += "機謀多變，思緒奔騰。今日適合規劃思考，但忌鑽牛角尖。";
-  else if (stars.includes("太陽"))
-    actionText += "貴氣發散，利於付出。需注意心力不過度消耗，保持溫暖。";
-  else if (stars.includes("武曲"))
-    actionText += "剛毅執行，財星高照。適合處理財務報表或執行困難任務。";
-  else if (stars.includes("天同"))
-    actionText += "福星高照，情緒流動。適合放鬆協調，享受生活，與人為善。";
-  else if (stars.includes("廉貞"))
-    actionText += "能量複雜強大。需將強大的精神力專注於工作，以免心生雜念。";
-  else if (stars.includes("天府"))
-    actionText += "庫藏充盈，氣度穩健。適合守成、盤點資源，不宜冒進。";
-  else if (stars.includes("太陰"))
-    actionText += "溫柔婉約，直覺敏銳。適合內觀、整理居家環境，與家人共處。";
-  else if (stars.includes("巨門"))
-    actionText += "口舌之星。今日言多必失，宜閉口修，觀察者效應：只說好話。";
-  else if (stars.includes("天相"))
-    actionText += "掌印輔佐，平衡協調。適合居中策劃，展現天河水之潤澤。";
-  else if (stars.includes("天梁"))
-    actionText += "老成持重，蔭庇他人。適合做善事、接觸宗教哲學，轉化孤獨感。";
-  else if (stars.includes("七殺"))
-    actionText += "獨當一面，大刀闊斧。適合突破現狀，但切忌衝動行事。";
-  else if (stars.includes("破軍"))
-    actionText += "破舊立新，變動劇烈。適合斷捨離，清理舊有模式。";
+  // A. 吉凶定調
+  if (hits.ji) {
+    actionText += `⚠️ 【修心轉念】\n今日天干【${stem}】引發【${hits.ji}化忌】。`;
+    if (minor.includes(hits.ji))
+      actionText +=
+        "此變化發生在輔星細節上，需留意文書細節、小人干擾或突發情緒。";
+    else actionText += "此為主星化忌，能量波動較大，宜守不宜攻，以退為進。";
 
-  // 2. 四化關鍵指引
-  if (isJi) {
-    actionText += `\n\n⚠️ 【趨吉避凶】\n今日天干【${stem}】引發【${siHua.ji}化忌】。能量在此處受阻，易有是非或誤解。建議「韜光養晦」，暫緩重大決定，回歸內在修持，以忍辱轉化業力。`;
-  } else if (isLu) {
-    actionText += `\n\n✨ 【乘勢而起】\n今日天干【${stem}】引發【${siHua.lu}化祿】。機遇良好，順勢而為，福氣自來。`;
+    // 特殊煞星警示
+    if (minor.includes("擎羊") || minor.includes("陀羅"))
+      actionText += "\n(同宮遇羊陀，更需謹言慎行，防血光或口角爭執。)";
+    if (minor.includes("火星") || minor.includes("鈴星"))
+      actionText += "\n(同宮遇火鈴，情緒易因衝動而失控，請深呼吸三秒再行動。)";
+    if (minor.includes("地劫") || minor.includes("地空"))
+      actionText += "\n(化忌逢空劫，得失心勿重，適合轉向精神層面的學習。)";
+  } else if (hits.lu) {
+    actionText += `✨ 【乘勢而起】\n今日天干【${stem}】引發【${hits.lu}化祿】。機遇良好，福氣自來，可積極推動計畫。`;
+    if (minor.includes("祿存"))
+      actionText += "\n(雙祿交流，財官雙美，大吉之象。)";
+  } else if (hits.quan) {
+    actionText += `⚔️ 【積極行動】\n今日天干【${stem}】引發【${hits.quan}化權】。掌握主導，執行力強，適合談判、決策或爭取權益。`;
+  } else if (hits.ke) {
+    actionText += `📜 【貴人相助】\n今日天干【${stem}】引發【${hits.ke}化科】。有利名聲、考試或文書契約，易得貴人解圍。`;
   } else {
-    actionText += `\n\n☯️ 【持盈保泰】\n今日能量平穩，依循主星特質行事，保持正念，活在當下。`;
+    actionText += `☯️ 【持盈保泰】\n今日四化未衝擊本宮，能量平穩，依循主星特質行事即可。`;
   }
+
+  actionText += `\n\n🔎 【星曜特質】\n`;
+
+  // B. 組合星曜解釋
+  // 優先解釋計算用的主星(含借星)
+  calcStars.forEach((star: any) => {
+    if (STAR_INTERPRETATIONS[star]) {
+      // 針對天府逢空劫的特殊判斷
+      if (
+        star === "天府" &&
+        (allStarsToCheck.includes("地劫") || allStarsToCheck.includes("地空"))
+      ) {
+        actionText +=
+          "• 天府：本為財庫，但逢空劫，即為「露庫」。今日理財宜極度保守，防破財或衝動消費。\n";
+      } else {
+        actionText += `• ${star}：${STAR_INTERPRETATIONS[star]}\n`;
+      }
+    }
+  });
+
+  // 解釋輔星
+  minor.forEach((star: any) => {
+    if (STAR_INTERPRETATIONS[star]) {
+      actionText += `• ${star}：${STAR_INTERPRETATIONS[star]}\n`;
+    }
+  });
+
+  if (status === "借星")
+    actionText += "\n(註：本宮無主星，借對宮星曜，力量稍折，需更主動積極。)";
 
   return {
     displayStars,
-    displaySiHua,
+    statusText,
     highlightColor,
     borderColor,
     bgOverlay,
     actionText,
+    statusBadgeBg,
+    statusBadgeBorder,
   };
 };
 
-// --- 2. 用戶原廠設定 ---
-const USER_PROFILE = {
-  year: "1966 丙午",
-  zodiac: "火馬",
-  element: "天河水",
-  lunarBirth: "六月廿八",
-  lifePalace: "巳宮 (蛇)",
-  pattern: "天相坐命",
-};
-
-// --- 3. 格物般若智庫 ---
-const WISDOM_LIBRARY = {
+// ============================================================================
+// 3. 格物般若智庫 (The Wisdom Database)
+// ============================================================================
+const WISDOM_LIBRARY: any = {
   anger: [
     {
       q: "憤怒是封閉系統的劇烈熵增，正無效耗散生命能量。",
@@ -237,7 +391,7 @@ const WISDOM_LIBRARY = {
     {
       q: "相對論：速度快時間扭曲。憤怒時痛苦被拉長。",
       s: "一念三千。抽離當下，別陷在拉長的時間點。",
-      a: "想像十年後回看此刻：還重要嗎？",
+      a: "想像十年後的自己回看此刻：還重要嗎？",
     },
     {
       q: "情緒具波粒二象性。不觀測為憤怒，它只是中性能量。",
@@ -938,7 +1092,19 @@ const WISDOM_LIBRARY = {
 
 // --- Components ---
 
-const WisdomCard = ({ type, data, onClose, onRefresh }) => {
+const ProfileDisplay = ({ ganZhi }: { ganZhi: string }) => (
+  <div className="mt-1 flex flex-col items-end gap-1 select-none">
+    <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-full px-3 py-1.5 shadow-lg relative z-20">
+      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+      <span className="text-xs font-bold text-slate-300">丙午</span>
+    </div>
+    <div className="text-[10px] text-slate-500 font-mono tracking-tighter bg-slate-900/30 px-2 py-0.5 rounded border border-slate-800/50 flex items-center gap-1">
+      {ganZhi}
+    </div>
+  </div>
+);
+
+const WisdomCard = ({ type, data, onClose, onRefresh }: any) => {
   const [isFading, setIsFading] = useState(false);
 
   const handleRefresh = () => {
@@ -1032,22 +1198,26 @@ const WisdomCard = ({ type, data, onClose, onRefresh }) => {
 
 // --- Main App ---
 
-export default function SpiritPivotFinalRelease() {
+export default function App() {
   const [dailyInfo, setDailyInfo] = useState({
     ganZhi: "",
     palace: "",
     stars: "",
     actionText: "",
     displayStars: "",
-    displaySiHua: "",
-    luckyColor: "",
+    statusText: "",
+    highlightColor: "",
+    borderColor: "",
+    bgOverlay: "",
+    statusBadgeBg: "",
+    statusBadgeBorder: "",
   });
   const [todayDate, setTodayDate] = useState({ western: "", lunar: "" });
-  const [activeType, setActiveType] = useState(null);
-  const [currentWisdom, setCurrentWisdom] = useState(null);
-  const [lastWisdomIndex, setLastWisdomIndex] = useState({});
+  const [activeType, setActiveType] = useState<string | null>(null);
+  const [currentWisdom, setCurrentWisdom] = useState<any>(null);
+  const [lastWisdomIndex, setLastWisdomIndex] = useState<any>({});
   const [journalNote, setJournalNote] = useState("");
-  const [logs, setLogs] = useState([]);
+  const [logs, setLogs] = useState<any[]>([]);
 
   useEffect(() => {
     // 1. 初始化日期
@@ -1060,7 +1230,6 @@ export default function SpiritPivotFinalRelease() {
     });
     let lunar = "";
     try {
-      // Change month: 'long' to month: 'numeric'
       const lunarDate = new Intl.DateTimeFormat("zh-TW-u-ca-chinese", {
         month: "numeric",
         day: "numeric",
@@ -1071,30 +1240,32 @@ export default function SpiritPivotFinalRelease() {
     }
     setTodayDate({ western, lunar });
 
-    // 2. 核心命理演算 (Precision Engine v4)
+    // 2. 核心命理演算 (Precision Engine v6)
     const { stem, branch, branchKey } = getPrecisionGanZhi(now);
 
-    const dailyData = NATAL_CHART[branchKey];
+    // Day Branch determines Palace & Stars
+    const dailyData = FULL_NATAL_CHART[branchKey];
+
+    // Day Stem determines Si Hua
     const dailySiHua = SI_HUA_TABLE[stem];
 
-    // 生成內容
-    const { displayStars, displaySiHua, highlightColor, actionText } =
-      generateDailyContent(
-        dailyData.stars,
-        dailyData.palace,
-        dailySiHua,
-        stem,
-        dailyData.main
-      );
+    // 生成內容 (Advice + Action)
+    const content = generateDailyContent(dailyData, dailySiHua, stem);
 
     setDailyInfo({
       ganZhi: `${stem}${branch}日`,
       palace: dailyData.palace,
-      stars: dailyData.stars,
-      displayStars: displayStars,
-      displaySiHua: displaySiHua,
-      highlightColor: highlightColor,
-      actionText: actionText,
+      stars: content.displayStars,
+      actionText: content.actionText,
+      displayStars: content.displayStars,
+      // @ts-ignore
+      displaySiHua: content.statusText,
+      statusText: content.statusText,
+      highlightColor: content.highlightColor,
+      borderColor: content.borderColor,
+      bgOverlay: content.bgOverlay,
+      statusBadgeBg: content.statusBadgeBg,
+      statusBadgeBorder: content.statusBadgeBorder,
     });
 
     // 3. Load Logs
@@ -1102,7 +1273,7 @@ export default function SpiritPivotFinalRelease() {
     if (savedLogs) setLogs(JSON.parse(savedLogs));
   }, []);
 
-  const getRandomWisdom = (type) => {
+  const getRandomWisdom = (type: string) => {
     const pool = WISDOM_LIBRARY[type] || WISDOM_LIBRARY["doubt"];
     if (pool.length <= 1) return pool[0];
     let newIndex;
@@ -1112,11 +1283,11 @@ export default function SpiritPivotFinalRelease() {
       newIndex = Math.floor(Math.random() * pool.length);
       attempts++;
     } while (newIndex === lastIndex && attempts < 5);
-    setLastWisdomIndex((prev) => ({ ...prev, [type]: newIndex }));
+    setLastWisdomIndex((prev: any) => ({ ...prev, [type]: newIndex }));
     return pool[newIndex];
   };
 
-  const handleCapture = (type) => {
+  const handleCapture = (type: string) => {
     setCurrentWisdom(getRandomWisdom(type));
     setActiveType(type);
   };
@@ -1157,7 +1328,11 @@ export default function SpiritPivotFinalRelease() {
               ? "bg-rose-600"
               : dailyInfo.highlightColor.includes("amber")
               ? "bg-amber-100"
-              : "bg-indigo-900"
+              : dailyInfo.highlightColor.includes("purple")
+              ? "bg-purple-600"
+              : dailyInfo.highlightColor.includes("sky")
+              ? "bg-sky-600"
+              : "bg-emerald-900"
           }`}
         ></div>
       </div>
@@ -1167,7 +1342,7 @@ export default function SpiritPivotFinalRelease() {
         <div className="flex flex-col">
           <h1 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-100 to-amber-500 flex items-center gap-2">
             <Compass size={22} className="text-amber-500" />
-            靈樞 · 覺行
+            天樞 · 覺行
           </h1>
           <div className="flex items-center gap-2 mt-2 text-[11px] font-mono text-slate-400 tracking-wide">
             <span className="text-slate-300">{todayDate.western}</span>
@@ -1176,92 +1351,52 @@ export default function SpiritPivotFinalRelease() {
           </div>
         </div>
 
-        {/* Profile Button (Non-interactive) */}
-        <div className="mt-1 flex flex-col items-end gap-1 group z-50 relative cursor-default">
-          <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-full px-3 py-1.5 shadow-lg relative z-20">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-            <span className="text-xs font-bold text-slate-300">丙午</span>
-          </div>
-          <div className="text-[10px] text-slate-500 font-mono tracking-tighter bg-slate-900/30 px-2 py-0.5 rounded border border-slate-800/50 flex items-center gap-1">
-            {dailyInfo.ganZhi}
-          </div>
-        </div>
+        {/* Profile Display (Non-interactive) */}
+        <ProfileDisplay ganZhi={dailyInfo.ganZhi} />
       </header>
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto p-5 z-10 custom-scrollbar pb-24">
-        {/* Daily Fate - Top Section (Pure Info) */}
+        {/* Daily Fate - The Zen UI Block (Horizontal Compact) */}
         <section className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div className="flex items-center gap-2 mb-3">
             <MapPin size={16} className="text-amber-500" />
             <h2 className="text-sm font-bold text-slate-300">今日導航</h2>
           </div>
 
-          <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-2xl p-5 relative overflow-hidden shadow-xl">
-            <div className="relative z-10 flex flex-col gap-4">
-              <div className="flex justify-between items-center border-b border-slate-700/50 pb-3">
-                <span className="text-xs font-bold text-indigo-400 bg-indigo-950/50 px-2 py-1 rounded border border-indigo-500/30">
-                  {dailyInfo.palace}
-                </span>
-                <span
-                  className={`text-xs font-mono font-bold ${dailyInfo.highlightColor}`}
-                >
-                  {dailyInfo.displaySiHua}
-                </span>
-              </div>
-
-              <div>
-                <h3 className="text-2xl font-bold text-white tracking-wide mb-1">
-                  {dailyInfo.displayStars}
-                </h3>
-              </div>
+          <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-2xl p-5 relative overflow-hidden shadow-xl flex flex-row items-center justify-center gap-3 flex-wrap">
+            {/* Left: Palace */}
+            <div className="text-xs font-bold tracking-widest text-indigo-300 bg-indigo-900/30 px-2 py-1 rounded border border-indigo-500/20 whitespace-nowrap">
+              {dailyInfo.palace}
             </div>
+
+            {/* Center: Stars (Main Focus) */}
+            <h3 className="text-xl font-bold text-white tracking-wide drop-shadow-md whitespace-nowrap text-center">
+              {dailyInfo.displayStars}
+            </h3>
+
+            {/* Right: Status */}
+            {dailyInfo.statusText !== "平穩" && (
+              <div
+                className={`text-xs font-bold px-2 py-1 rounded border whitespace-nowrap ${dailyInfo.statusBadgeBg} ${dailyInfo.statusBadgeBorder} ${dailyInfo.highlightColor}`}
+              >
+                {dailyInfo.statusText}
+              </div>
+            )}
           </div>
         </section>
 
-        {/* Action Guide - Bottom Section (Unity of Knowledge and Action) */}
+        {/* Action Guide - Zen Style (No Header) */}
         <section className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
           <div
-            className={`bg-slate-950/60 border rounded-2xl p-5 relative overflow-hidden ${
-              dailyInfo.highlightColor.includes("rose")
-                ? "border-rose-900/30"
-                : dailyInfo.highlightColor.includes("amber")
-                ? "border-amber-900/30"
-                : "border-emerald-900/30"
-            }`}
+            className={`bg-slate-950/60 border rounded-2xl p-6 relative overflow-hidden ${dailyInfo.borderColor}`}
           >
             <div
-              className={`absolute top-0 left-0 w-1 h-full ${
-                dailyInfo.highlightColor.includes("rose")
-                  ? "bg-rose-500/50"
-                  : dailyInfo.highlightColor.includes("amber")
-                  ? "bg-amber-500/50"
-                  : "bg-emerald-500/50"
-              }`}
+              className={`absolute top-0 left-0 w-1 h-full ${dailyInfo.bgOverlay.replace(
+                "/50",
+                ""
+              )}`}
             ></div>
-            <div className="flex items-center gap-2 mb-3">
-              <Activity
-                size={16}
-                className={
-                  dailyInfo.highlightColor.includes("rose")
-                    ? "text-rose-500"
-                    : dailyInfo.highlightColor.includes("amber")
-                    ? "text-amber-500"
-                    : "text-emerald-500"
-                }
-              />
-              <h2
-                className={`text-sm font-bold ${
-                  dailyInfo.highlightColor.includes("rose")
-                    ? "text-rose-500"
-                    : dailyInfo.highlightColor.includes("amber")
-                    ? "text-amber-500"
-                    : "text-emerald-500"
-                }`}
-              >
-                知行合一
-              </h2>
-            </div>
             <p className="text-sm text-slate-300 leading-loose text-justify font-serif tracking-wide whitespace-pre-wrap">
               {dailyInfo.actionText}
             </p>
