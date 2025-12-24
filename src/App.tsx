@@ -61,7 +61,7 @@ const EARTHLY_BRANCHES = [
   "亥",
 ];
 
-// ★ 數據校正 (Data Rectification): 1966 丙午人 (寅時)
+// ★ 數據校正 (Data Rectification): 1966 丙午 (寅時)
 const FULL_NATAL_CHART: any = {
   子: { palace: "疾厄宮", main: ["太陽"], borrow: [], minor: [], status: "陷" },
   丑: {
@@ -552,7 +552,7 @@ const ProfileDisplay = ({ ganZhi }: any) => (
   <div className="mt-1 flex flex-col items-end gap-1 select-none">
     <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-full px-3 py-1.5 shadow-lg relative z-20">
       <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-      <span className="text-xs font-bold text-slate-300">丙午人 (天相)</span>
+      <span className="text-xs font-bold text-slate-300">丙午 (天相)</span>
     </div>
     <div className="text-[10px] text-slate-500 font-mono tracking-tighter bg-slate-900/30 px-2 py-0.5 rounded border border-slate-800/50">
       {typeof ganZhi === "string" ? ganZhi : ""}
@@ -1263,7 +1263,7 @@ export default function App() {
         <div className="flex flex-col">
           <h1 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-100 to-amber-500 flex items-center gap-2">
             <Compass size={22} className="text-amber-500" />
-            天樞 · 覺行 v2.1
+            天樞 · 覺行
           </h1>
           <div className="flex items-center gap-2 mt-2 text-[11px] font-mono text-slate-400 tracking-wide">
             <span className="text-slate-300">{todayDate.western}</span>
