@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Compass,
   Zap,
@@ -14,21 +14,21 @@ import {
   Infinity,
   RefreshCw,
   MapPin,
-  Microscope,
   Sparkles,
   AlertTriangle,
   Star,
   Calendar,
-  Clock,
-  Monitor,
-  Shield,
   Crown,
   BookOpen,
   LineChart,
+  BarChart3,
+  Sigma,
+  TrendingUp,
+  CheckCircle2,
 } from "lucide-react";
 
 // ============================================================================
-// 1. 絕對精準命理核心 (Precision Engine v6 - Scientific)
+// 1. 靜態資料庫 (Static Data) - 置頂
 // ============================================================================
 
 const HEAVENLY_STEMS = [
@@ -58,91 +58,8 @@ const EARTHLY_BRANCHES = [
   "亥",
 ];
 
-// ★ 萬年曆錨點：2025-12-20 = 癸亥日
-const getPrecisionGanZhi = (dateObj: any) => {
-  const anchorDate = new Date("2025-12-20T12:00:00");
-  const targetDate = new Date(dateObj);
-  targetDate.setHours(12, 0, 0, 0);
-
-  const dayDiff = Math.round(
-    (targetDate.getTime() - anchorDate.getTime()) / (1000 * 60 * 60 * 24)
-  );
-
-  const baseStemIndex = 9; // 癸
-  const baseBranchIndex = 11; // 亥
-
-  let stemIndex = (baseStemIndex + dayDiff) % 10;
-  if (stemIndex < 0) stemIndex += 10;
-
-  let branchIndex = (baseBranchIndex + dayDiff) % 12;
-  if (branchIndex < 0) branchIndex += 12;
-
-  return {
-    stem: HEAVENLY_STEMS[stemIndex],
-    branch: EARTHLY_BRANCHES[branchIndex],
-    branchKey: EARTHLY_BRANCHES[branchIndex],
-  };
-};
-
-// ============================================================================
-// 2. 量化權重參數庫 (Quantification Database)
-// ============================================================================
-
-const STAR_BASE_VALUES: any = {
-  // 主星
-  紫微: 10,
-  天府: 9,
-  太陽: 8,
-  太陰: 8,
-  武曲: 7,
-  七殺: 7,
-  破軍: 6,
-  貪狼: 6,
-  天相: 6,
-  天梁: 6,
-  天同: 5,
-  天機: 5,
-  廉貞: 5,
-  巨門: 4,
-  // 吉星
-  祿存: 5,
-  左輔: 4,
-  右弼: 4,
-  天魁: 4,
-  天鉞: 4,
-  文昌: 3,
-  文曲: 3,
-  // 煞星 (負值)
-  擎羊: -5,
-  陀羅: -5,
-  火星: -4,
-  鈴星: -4,
-  地空: -4,
-  地劫: -4,
-};
-
-const ENV_COEFFICIENTS: any = {
-  廟: 1.5,
-  旺: 1.2,
-  得: 1.1,
-  利: 1.0,
-  平: 0.6,
-  陷: -0.5,
-  借星: 0.4,
-};
-
-const SIHUA_DELTA = {
-  lu: 15,
-  quan: 10,
-  ke: 8,
-  ji: -15,
-};
-
-// ============================================================================
-// 3. 命盤與四化資料
-// ============================================================================
-
-const FULL_NATAL_CHART: any = {
+// 1966 丙午人 真實全盤結構
+const FULL_NATAL_CHART = {
   子: { palace: "疾厄宮", main: ["太陽"], borrow: [], minor: [], status: "陷" },
   丑: {
     palace: "財帛宮",
@@ -163,7 +80,7 @@ const FULL_NATAL_CHART: any = {
     main: ["紫微", "貪狼"],
     borrow: [],
     minor: ["火星"],
-    status: "旺",
+    status: "旺平",
   },
   辰: {
     palace: "兄弟宮",
@@ -197,7 +114,7 @@ const FULL_NATAL_CHART: any = {
     palace: "田宅宮",
     main: [],
     borrow: ["天機", "太陰"],
-    minor: ["文昌"],
+    minor: ["文昌", "天馬"],
     status: "借星",
   },
   酉: {
@@ -217,7 +134,8 @@ const FULL_NATAL_CHART: any = {
   },
 };
 
-const SI_HUA_TABLE: any = {
+// 十天干四化表
+const SI_HUA_TABLE = {
   甲: { lu: "廉貞", quan: "破軍", ke: "武曲", ji: "太陽" },
   乙: { lu: "天機", quan: "天梁", ke: "紫微", ji: "太陰" },
   丙: { lu: "天同", quan: "天機", ke: "文昌", ji: "廉貞" },
@@ -230,11 +148,205 @@ const SI_HUA_TABLE: any = {
   癸: { lu: "破軍", quan: "巨門", ke: "太陰", ji: "貪狼" },
 };
 
+const STAR_BASE_VALUES = {
+  紫微: 10,
+  天府: 9,
+  太陽: 8,
+  太陰: 8,
+  武曲: 7,
+  七殺: 7,
+  破軍: 6,
+  貪狼: 6,
+  天相: 6,
+  天梁: 6,
+  天同: 5,
+  天機: 5,
+  廉貞: 5,
+  巨門: 4,
+  祿存: 5,
+  左輔: 4,
+  右弼: 4,
+  天魁: 4,
+  天鉞: 4,
+  文昌: 3,
+  文曲: 3,
+  天馬: 2,
+  擎羊: -5,
+  陀羅: -5,
+  火星: -4,
+  鈴星: -4,
+  地空: -4,
+  地劫: -4,
+};
+
+const ENV_COEFFICIENTS = {
+  廟: 1.5,
+  旺: 1.2,
+  得: 1.1,
+  利: 1.0,
+  平: 0.6,
+  陷: -0.5,
+  借星: 0.4,
+};
+
+const SIHUA_DELTA = {
+  lu: 15,
+  quan: 10,
+  ke: 8,
+  ji: -15,
+};
+
+const STAR_DESCRIPTIONS = {
+  紫微: "尊貴領袖，包容統御。",
+  天機: "機智規劃，靈動多變。",
+  太陽: "博愛付出，發散光熱。",
+  武曲: "剛毅執行，務實理財。",
+  天同: "赤子之心，協調享樂。",
+  廉貞: "複雜能量，專注轉化。",
+  天府: "穩健庫藏，寬厚守成。",
+  太陰: "溫柔內斂，直覺敏銳。",
+  貪狼: "多才多藝，長袖善舞。",
+  巨門: "心思細膩，觀察入微。",
+  天相: "居中協調，平衡輔佐。",
+  天梁: "蔭庇眾生，公正解厄。",
+  七殺: "獨當一面，勇於突破。",
+  破軍: "除舊佈新，先破後成。",
+  祿存: "天祿解厄，增添穩定。",
+  左輔: "平輩助力，團隊合作。",
+  右弼: "異性助力，機智圓融。",
+  天魁: "陽貴提攜，機遇良好。",
+  天鉞: "陰貴暗助，逢凶化吉。",
+  文昌: "科名學術，條理分明。",
+  文曲: "才藝口才，靈感豐富。",
+  天馬: "奔波變動，越動越發。",
+  擎羊: "衝擊決斷，宜技藝開創。",
+  陀羅: "磨練心性，需耐心解結。",
+  火星: "爆發力強，宜速戰速決。",
+  鈴星: "深沉謀算，宜冷靜策劃。",
+  地空: "跳脫框架，重靈性悟性。",
+  地劫: "反向操作，重精神價值。",
+};
+
+// 完整語錄庫
+const WISDOM_LIBRARY = {
+  anger: [
+    {
+      q: "憤怒是封閉系統的劇烈熵增，正無效耗散您的生命能量。",
+      s: "《心經》：無無明，亦無無明盡。火是虛幻的，因我執是虛幻的。",
+      a: "觀想打開心靈窗戶，讓熱氣流向虛空。",
+    },
+    {
+      q: "根據牛頓第三定律，攻擊別人，震傷的一定是自己。",
+      s: "一切有為法，如夢幻泡影。別對著影子揮拳。",
+      a: "立刻停止施力，深呼吸感受反作用力消失。",
+    },
+    {
+      q: "恨加深量子糾纏。切斷惡緣的唯一方法是停止觀測。",
+      s: "照見五蘊皆空。你我皆空，本無連結。",
+      a: "閉眼，觀想拔掉能量插頭，螢幕黑屏。",
+    },
+  ],
+  greed: [
+    {
+      q: "貪婪如黑洞，質量越大引力越強，光都逃不掉。",
+      s: "色不異空。物質本質99%是空隙。",
+      a: "立刻做件給予的事，逆轉引力。",
+    },
+    {
+      q: "測不準原理：越想抓緊結果，過程越混亂。",
+      s: "以無所得故。不求，所以萬有。",
+      a: "攤開手掌，告訴宇宙：我信任安排。",
+    },
+    {
+      q: "能量守恆：總量不變，獲得只是能量轉移。",
+      s: "不增不減。本自具足，何必外求？",
+      a: "清理不需要物品，讓能量流動。",
+    },
+  ],
+  ignorance: [
+    {
+      q: "全息宇宙：碎片含整體資訊。小處見大道。",
+      s: "一花一世界。別被表象迷惑。",
+      a: "從喝水看見雨水、太陽的因緣。",
+    },
+    {
+      q: "世界是高維模擬。別把遊戲得失當真。",
+      s: "如夢幻泡影。覺察玩家，不認同角色。",
+      a: "問：「誰在經歷？」抽離當觀眾。",
+    },
+    {
+      q: "光速有限，所見皆過去影像。煩惱亦是投影。",
+      s: "遠離顛倒夢想。過去心不可得。",
+      a: "看眼前人事物，告訴自己：這是全新的。",
+    },
+  ],
+  pride: [
+    {
+      q: "相對論無絕對參考系。在別人眼中您是背景。",
+      s: "無我相。無固定主宰。",
+      a: "試著從對方視角看這件事。",
+    },
+    {
+      q: "傲慢成孤立系統，熵值增加。連結引負熵。",
+      s: "自性真空。放空智慧才進來。",
+      a: "主動請教他人，真誠聆聽。",
+    },
+    {
+      q: "自我膨脹必塌縮成黑洞。縮小保持光亮。",
+      s: "謙卑第一。滿招損謙受益。",
+      a: "對服務員說謝謝，真心感謝。",
+    },
+  ],
+  doubt: [
+    {
+      q: "薛丁格的貓：未來疊加態。恐懼把貓殺死。",
+      s: "心無掛礙。恐懼來自妄想。",
+      a: "對未來開放：我有能力應對。",
+    },
+    {
+      q: "路徑積分：路徑無限。別被死路嚇住。",
+      s: "一切唯心造。心寬路寬。",
+      a: "列出三種瘋狂解決方案。",
+    },
+    {
+      q: "量子隧穿：信心足可穿透障礙之牆。",
+      s: "無有恐怖。障礙是心設。",
+      a: "觀想如光穿透困難達彼岸。",
+    },
+  ],
+};
+
 // ============================================================================
-// 4. 運算邏輯
+// 2. 命理運算邏輯 (Helper Functions) - 確保在組件前定義
 // ============================================================================
 
-const calculateEnergyScore = (chartData: any, siHua: any) => {
+// ★ 萬年曆錨點：2025-12-20 = 癸亥日
+const getPrecisionGanZhi = (dateObj) => {
+  const anchorDate = new Date("2025-12-20T12:00:00");
+  const targetDate = new Date(dateObj);
+  targetDate.setHours(12, 0, 0, 0);
+
+  const dayDiff = Math.round(
+    (targetDate.getTime() - anchorDate.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  const baseStemIndex = 9;
+  const baseBranchIndex = 11;
+
+  let stemIndex = (baseStemIndex + dayDiff) % 10;
+  if (stemIndex < 0) stemIndex += 10;
+
+  let branchIndex = (baseBranchIndex + dayDiff) % 12;
+  if (branchIndex < 0) branchIndex += 12;
+
+  return {
+    stem: HEAVENLY_STEMS[stemIndex],
+    branch: EARTHLY_BRANCHES[branchIndex],
+    branchKey: EARTHLY_BRANCHES[branchIndex],
+  };
+};
+
+const calculateEnergyScore = (chartData, siHua) => {
   const { main, borrow, minor, status } = chartData;
   const stars = main.length > 0 ? main : borrow;
   const allStars = [...stars, ...minor];
@@ -242,12 +354,13 @@ const calculateEnergyScore = (chartData: any, siHua: any) => {
   let totalScore = 0;
   let coefficient = ENV_COEFFICIENTS[status] || 1.0;
 
-  allStars.forEach((star: any) => {
+  allStars.forEach((star) => {
     let vBase = STAR_BASE_VALUES[star] || 0;
-    if (vBase < 0 && coefficient > 1) {
-      totalScore += Math.abs(vBase) * coefficient * 0.8;
-    } else if (vBase < 0 && coefficient < 0) {
-      totalScore += vBase * Math.abs(coefficient) * 1.5;
+    if (vBase < 0) {
+      if (coefficient > 1) totalScore += Math.abs(vBase) * coefficient * 0.8;
+      else if (coefficient < 0)
+        totalScore += vBase * Math.abs(coefficient) * 1.5;
+      else totalScore += vBase * coefficient;
     } else {
       totalScore += vBase * coefficient;
     }
@@ -261,7 +374,7 @@ const calculateEnergyScore = (chartData: any, siHua: any) => {
   return Math.round(totalScore);
 };
 
-const getEnergyLevel = (score: number) => {
+const getEnergyLevel = (score) => {
   if (score >= 25)
     return {
       label: "極強 (Flow)",
@@ -298,92 +411,114 @@ const getEnergyLevel = (score: number) => {
   };
 };
 
-// 內容生成
-const generateDailyContent = (
-  chartData: any,
-  siHua: any,
-  stem: string,
-  score: number
-) => {
-  const { main, borrow, minor, palace, status } = chartData;
+const generateDailyContent = (chartData, siHua, stem, score) => {
+  const { main, borrow, minor, status, palace } = chartData;
   const calcStars = main.length > 0 ? main : borrow;
 
   let displayStars = "";
   if (main.length > 0) {
-    displayStars =
-      main.join(" · ") + (minor.length > 0 ? " · " + minor.join("") : "");
+    displayStars = main.join(" · ");
+    if (minor.length > 0) displayStars += " · " + minor.join(" · ");
   } else {
-    displayStars =
-      `(借)${borrow.join("·")}` +
-      (minor.length > 0 ? " · " + minor.join("") : "");
+    displayStars = `(借)${borrow.join("·")}`;
+    if (minor.length > 0) displayStars += " · " + minor.join(" · ");
   }
 
   const allStarsToCheck = [...calcStars, ...minor];
   const hits = {
-    lu: allStarsToCheck.find((s: any) => s === siHua.lu),
-    quan: allStarsToCheck.find((s: any) => s === siHua.quan),
-    ke: allStarsToCheck.find((s: any) => s === siHua.ke),
-    ji: allStarsToCheck.find((s: any) => s === siHua.ji),
+    lu: allStarsToCheck.find((s) => s === siHua.lu),
+    quan: allStarsToCheck.find((s) => s === siHua.quan),
+    ke: allStarsToCheck.find((s) => s === siHua.ke),
+    ji: allStarsToCheck.find((s) => s === siHua.ji),
   };
 
   let displaySiHua = [];
+  let highlightColor = "text-emerald-400";
+  let borderColor = "border-emerald-500/20";
+  let bgOverlay = "bg-emerald-500/10";
+  let statusBadgeBg = "bg-emerald-900/30";
+  let statusBadgeBorder = "border-emerald-500/30";
+
   if (hits.lu) displaySiHua.push(`${hits.lu}祿`);
   if (hits.quan) displaySiHua.push(`${hits.quan}權`);
   if (hits.ke) displaySiHua.push(`${hits.ke}科`);
   if (hits.ji) displaySiHua.push(`${hits.ji}忌`);
-  let statusText = displaySiHua.length > 0 ? displaySiHua.join(" ") : "平穩";
 
-  const energyLevel = getEnergyLevel(score);
-  let highlightColor = energyLevel.color;
-  let borderColor = energyLevel.barColor.replace("bg-", "border-") + "/30";
-  let bgOverlay = energyLevel.barColor.replace("bg-", "bg-") + "/10";
-  let statusBadgeBg = energyLevel.barColor.replace("bg-", "bg-") + "/20";
-  let statusBadgeBorder =
-    energyLevel.barColor.replace("bg-", "border-") + "/30";
-
-  let summaryText = ""; // 總體能量定調
-  let actionText = ""; // 星曜解析
-
-  if (score < -15) {
-    summaryText = `⚠️ 【潛龍勿用】 (能量指數 ${score})\n環境阻力較大。適合「被動」應對，不宜主動出擊。多做內在修持，少做外在決策。`;
-  } else if (score > 20) {
-    summaryText = `🚀 【飛龍在天】 (能量指數 ${score})\n氣場強旺。是執行重大計畫、談判或突破的最佳時機，請把握良機。`;
-  } else if (score >= -5 && score <= 10) {
-    summaryText = `☯️ 【持盈保泰】 (能量指數 ${score})\n能量平穩，依循主星特質行事，保持正念，活在當下。`;
-  } else {
-    summaryText = `🌊 【順勢而為】 (能量指數 ${score})\n能量流動正常，保持覺知，應對變化。`;
-  }
+  let statusText = displaySiHua.length > 0 ? displaySiHua.join("  ") : "平穩";
 
   if (hits.ji) {
-    summaryText += `\n\n⚠️ 注意：天干【${stem}】引發【${hits.ji}化忌】。`;
-    if (minor.includes(hits.ji)) summaryText += "干擾來自細節或輔助層面。";
-    else summaryText += "主架構受到衝擊，需謹慎應對。";
-    if (minor.includes("地劫") || minor.includes("地空"))
-      summaryText += " (逢空劫，得失心勿重，轉為精神學習為佳。)";
+    highlightColor = "text-rose-400";
+    borderColor = "border-rose-500/20";
+    bgOverlay = "bg-rose-500/10";
+    statusBadgeBg = "bg-rose-900/30";
+    statusBadgeBorder = "border-rose-500/30";
   } else if (hits.lu) {
-    summaryText += `\n\n✨ 吉兆：天干【${stem}】引發【${hits.lu}化祿】。資源流動順暢，付出有回報。`;
+    highlightColor = "text-amber-400";
+    borderColor = "border-amber-500/20";
+    bgOverlay = "bg-amber-500/10";
+    statusBadgeBg = "bg-amber-900/30";
+    statusBadgeBorder = "border-amber-500/30";
+  } else if (hits.quan) {
+    highlightColor = "text-purple-400";
+    borderColor = "border-purple-500/20";
+    bgOverlay = "bg-purple-500/10";
+    statusBadgeBg = "bg-purple-900/30";
+    statusBadgeBorder = "border-purple-500/30";
+  } else if (hits.ke) {
+    highlightColor = "text-sky-400";
+    borderColor = "border-sky-500/20";
+    bgOverlay = "bg-sky-500/10";
+    statusBadgeBg = "bg-sky-900/30";
+    statusBadgeBorder = "border-sky-500/30";
   }
 
-  calcStars.slice(0, 2).forEach((star: any) => {
-    if (star === "紫微") actionText += "• 紫微：尊貴包容，適合領導統御。\n";
-    if (star === "天府") actionText += "• 天府：穩健守成，適合盤點資源。\n";
-    if (star === "太陽") actionText += "• 太陽：博愛付出，燃燒自己照亮他人。\n";
-    if (star === "武曲") actionText += "• 武曲：剛毅執行，果斷處理財務。\n";
-    if (star === "天同") actionText += "• 天同：協調享樂，保持赤子之心。\n";
-    if (star === "廉貞") actionText += "• 廉貞：專注工作，轉化複雜能量。\n";
-    if (star === "太陰") actionText += "• 太陰：溫柔內斂，直覺敏銳。\n";
-    if (star === "貪狼") actionText += "• 貪狼：長袖善舞，學習慾望強烈。\n";
-    if (star === "巨門") actionText += "• 巨門：觀察入微，謹言慎行。\n";
-    if (star === "天相") actionText += "• 天相：居中協調，展現平衡之美。\n";
-    if (star === "天梁") actionText += "• 天梁：蔭庇眾生，公正解決難題。\n";
-    if (star === "七殺") actionText += "• 七殺：獨當一面，勇於突破現狀。\n";
-    if (star === "破軍") actionText += "• 破軍：除舊佈新，勇敢變革。\n";
-    if (star === "天機") actionText += "• 天機：機智規劃，避免鑽牛角尖。\n";
+  let actionText = "";
+
+  if (hits.ji) {
+    actionText += `⚠️ 【修心轉念】\n今日天干【${stem}】引發【${hits.ji}化忌】。`;
+    if (minor.includes(hits.ji))
+      actionText +=
+        "此變化發生在輔星細節上，需留意文書細節、小人干擾或突發情緒。";
+    else actionText += "此為主星化忌，能量波動較大，宜守不宜攻，以退為進。";
+    if (minor.includes("擎羊") || minor.includes("陀羅"))
+      actionText += "\n(同宮遇羊陀，更需謹言慎行，防血光或口角爭執。)";
+    if (minor.includes("火星") || minor.includes("鈴星"))
+      actionText += "\n(同宮遇火鈴，情緒易因衝動而失控，請深呼吸三秒再行動。)";
+  } else if (hits.lu) {
+    actionText += `✨ 【乘勢而起】\n今日天干【${stem}】引發【${hits.lu}化祿】。機遇良好，福氣自來，可積極推動計畫。`;
+    if (minor.includes("祿存"))
+      actionText += "\n(雙祿交流，財官雙美，大吉之象。)";
+  } else if (hits.quan) {
+    actionText += `⚔️ 【積極行動】\n今日天干【${stem}】引發【${hits.quan}化權】。掌握主導，執行力強，適合談判、決策或爭取權益。`;
+  } else if (hits.ke) {
+    actionText += `📜 【貴人相助】\n今日天干【${stem}】引發【${hits.ke}化科】。有利名聲、考試或文書契約，易得貴人解圍。`;
+  } else {
+    actionText += `☯️ 【持盈保泰】\n今日四化未衝擊本宮，能量平穩，依循主星特質行事即可。`;
+  }
+
+  actionText += `\n\n🔎 【星曜特質】\n`;
+  calcStars.forEach((star) => {
+    if (STAR_DESCRIPTIONS[star]) {
+      if (
+        star === "天府" &&
+        (allStarsToCheck.includes("地劫") || allStarsToCheck.includes("地空"))
+      ) {
+        actionText +=
+          "• 天府：本為財庫，但逢空劫，即為「露庫」。今日理財宜極度保守，防破財或衝動消費。\n";
+      } else {
+        actionText += `• ${star}：${STAR_DESCRIPTIONS[star]}\n`;
+      }
+    }
+  });
+  minor.forEach((star) => {
+    if (STAR_DESCRIPTIONS[star])
+      actionText += `• ${star}：${STAR_DESCRIPTIONS[star]}\n`;
   });
 
-  if (minor.includes("地空") || minor.includes("地劫"))
-    actionText +=
-      "• 空劫：靈感乍現，跳脫框架，但不利世俗財利，適合精神層面的感悟。\n";
+  if (status === "借星")
+    actionText += "\n(註：本宮無主星，借對宮星曜，力量稍折，需更主動積極。)";
+
+  const energyLevel = getEnergyLevel(score);
 
   return {
     displayStars,
@@ -391,7 +526,6 @@ const generateDailyContent = (
     highlightColor,
     borderColor,
     bgOverlay,
-    summaryText,
     actionText,
     statusBadgeBg,
     statusBadgeBorder,
@@ -400,169 +534,120 @@ const generateDailyContent = (
   };
 };
 
-// --- 3. 格物般若智庫 (維持原樣) ---
-const WISDOM_LIBRARY: any = {
-  anger: [
-    {
-      q: "憤怒是封閉系統的劇烈熵增，正無效耗散生命能量。",
-      s: "《心經》：無無明，亦無無明盡。火是虛幻的，因我執是虛幻的。",
-      a: "觀想打開心靈窗戶，讓熱氣流向虛空。",
-    },
-    {
-      q: "根據牛頓第三定律，攻擊別人，震傷的一定是自己。",
-      s: "一切有為法，如夢幻泡影。別對著影子揮拳。",
-      a: "立刻停止施力，深呼吸感受反作用力消失。",
-    },
-    {
-      q: "恨加深量子糾纏。切斷惡緣的唯一方法是停止觀測。",
-      s: "照見五蘊皆空。你我皆空，本無連結。",
-      a: "閉眼，觀想拔掉能量插頭，螢幕黑屏。",
-    },
-    {
-      q: "憤怒是高頻破壞波。腦波處於Beta高頻，阻斷智慧連結。",
-      s: "心無掛礙。生氣的點，是心中未解的結。",
-      a: "刻意放慢語速呼吸，強制降頻。",
-    },
-    {
-      q: "您正像黑體輻射源般發射破壞熱能，會灼傷身邊場域。",
-      s: "凡所有相，皆是虛妄。別被表象熱度欺騙。",
-      a: "想像自己是冰，吸入燥熱轉化為慈悲水。",
-    },
-  ],
-  greed: [
-    {
-      q: "貪婪如黑洞，質量越大引力越強，光都逃不掉。",
-      s: "色不異空。物質本質99%是空隙。",
-      a: "立刻做件給予的事，逆轉引力。",
-    },
-    {
-      q: "測不準原理：越想抓緊結果，過程越混亂。",
-      s: "以無所得故。不求，所以萬有。",
-      a: "攤開手掌，告訴宇宙：我信任安排。",
-    },
-    {
-      q: "能量守恆：總量不變，獲得只是能量轉移。",
-      s: "不增不減。本自具足，何必外求？",
-      a: "清理不需要物品，讓能量流動。",
-    },
-    {
-      q: "渴望只是大腦巴甫洛夫制約，非真實需求。",
-      s: "離一切相。看穿光影與化學反應。",
-      a: "問自己：沒它我會死嗎？切斷連結。",
-    },
-    {
-      q: "邊際效應遞減：擁有越多，快樂越少。",
-      s: "知足常樂。快樂來自心，非物堆疊。",
-      a: "對已擁有東西說謝謝，重溫快樂。",
-    },
-  ],
-  ignorance: [
-    {
-      q: "全息宇宙：碎片含整體資訊。小處見大道。",
-      s: "一花一世界。別被表象迷惑。",
-      a: "從喝水看見雨水、太陽的因緣。",
-    },
-    {
-      q: "世界是高維模擬。別把遊戲得失當真。",
-      s: "如夢幻泡影。覺察玩家，不認同角色。",
-      a: "問：「誰在經歷？」抽離當觀眾。",
-    },
-    {
-      q: "光速有限，所見皆過去影像。煩惱亦是投影。",
-      s: "遠離顛倒夢想。過去心不可得。",
-      a: "看眼前人事物，告訴自己：這是全新的。",
-    },
-    {
-      q: "大腦濾波器過濾99%真相。所見即偏見。",
-      s: "去妄存真。移除有色眼鏡。",
-      a: "尋找反證：這件事其實有正面意義。",
-    },
-    {
-      q: "量子芝諾效應：持續覺知可凍結妄念。",
-      s: "制心一處。覺知一照，黑暗遁形。",
-      a: "專注看著煩惱念頭，像看著蟲。",
-    },
-  ],
-  pride: [
-    {
-      q: "相對論無絕對參考系。在別人眼中您是背景。",
-      s: "無我相。無固定主宰。",
-      a: "試著從對方視角看這件事。",
-    },
-    {
-      q: "傲慢成孤立系統，熵值增加。連結引負熵。",
-      s: "自性真空。放空智慧才進來。",
-      a: "主動請教他人，真誠聆聽。",
-    },
-    {
-      q: "自我膨脹必塌縮成黑洞。縮小保持光亮。",
-      s: "謙卑第一。滿招損謙受益。",
-      a: "對服務員說謝謝，真心感謝。",
-    },
-    {
-      q: "測不準原理：無法全知。承認侷限是智慧。",
-      s: "非想非非想。保持敬畏未知。",
-      a: "承認「我不知道」，瓦解傲慢。",
-    },
-    {
-      q: "微波背景輻射：皆來自星塵。本同一體。",
-      s: "眾生平等。禮敬內在神性。",
-      a: "看路人想：我們是兄弟姐妹。",
-    },
-  ],
-  doubt: [
-    {
-      q: "薛丁格的貓：未來疊加態。恐懼把貓殺死。",
-      s: "心無掛礙。恐懼來自妄想。",
-      a: "對未來開放：我有能力應對。",
-    },
-    {
-      q: "路徑積分：路徑無限。別被死路嚇住。",
-      s: "一切唯心造。心寬路寬。",
-      a: "列出三種瘋狂解決方案。",
-    },
-    {
-      q: "量子隧穿：信心足可穿透障礙之牆。",
-      s: "無有恐怖。障礙是心設。",
-      a: "觀想如光穿透困難達彼岸。",
-    },
-    {
-      q: "混沌背後有秩序。一切發生皆有深意。",
-      s: "因緣果報。安排是最好的。",
-      a: "找出倒霉事的正面影響。",
-    },
-    {
-      q: "焦慮是波擾動。潛入海底永遠平靜。",
-      s: "如是滅度。回到內在覺知。",
-      a: "深呼吸注意丹田穩定。",
-    },
-  ],
+const createHistogramData = (scores) => {
+  if (!scores.length) return { bins: [], min: 0, max: 0 };
+  const min = Math.min(...scores);
+  const max = Math.max(...scores);
+  const range = max - min;
+  let binSize = Math.ceil(range / 7);
+  if (binSize < 5) binSize = 5;
+
+  const startBin = Math.floor(min / binSize) * binSize;
+  const endBin = Math.ceil((max + 1) / binSize) * binSize;
+
+  let bins = [];
+  for (let i = startBin; i < endBin; i += binSize) {
+    bins.push({
+      label: `${i}`,
+      min: i,
+      max: i + binSize,
+      count: 0,
+    });
+  }
+  scores.forEach((s) => {
+    const bin = bins.find((b) => s >= b.min && s < b.max);
+    if (bin) bin.count++;
+  });
+  return { bins, min, max };
 };
 
-// --- Components ---
+const normalPdf = (x, mean, stdDev) => {
+  if (stdDev === 0) return 0;
+  return (
+    (1 / (stdDev * Math.sqrt(2 * Math.PI))) *
+    Math.exp(-0.5 * Math.pow((x - mean) / stdDev, 2))
+  );
+};
 
-// ProfileDisplay: 靜態顯示 - 優化版
-const ProfileDisplay = ({ ganZhi }: any) => (
+const generateCycleData = (startDate, days = 60) => {
+  let data = [];
+  const baseStart = new Date(startDate);
+
+  for (let i = 0; i < days; i++) {
+    const currentDate = new Date(baseStart);
+    currentDate.setDate(baseStart.getDate() + i);
+
+    const { stem, branch, branchKey } = getPrecisionGanZhi(currentDate);
+    const dailyData = FULL_NATAL_CHART[branchKey];
+    const dailySiHua = SI_HUA_TABLE[stem];
+    const score = calculateEnergyScore(dailyData, dailySiHua);
+
+    const mainStars =
+      dailyData.main.length > 0 ? dailyData.main : dailyData.borrow;
+    let starStr = mainStars.join("·");
+    if (dailyData.main.length === 0) starStr = `(借)${starStr}`;
+
+    if (dailyData.minor.length > 0) {
+      starStr += "·" + dailyData.minor.join("·");
+    }
+
+    let tags = [];
+    const allStars = [...mainStars, ...dailyData.minor];
+
+    if (allStars.includes(dailySiHua.ji))
+      tags.push({ type: "ji", label: "忌", star: dailySiHua.ji });
+    if (allStars.includes(dailySiHua.lu))
+      tags.push({ type: "lu", label: "祿", star: dailySiHua.lu });
+    if (allStars.includes(dailySiHua.quan))
+      tags.push({ type: "quan", label: "權", star: dailySiHua.quan });
+    if (allStars.includes(dailySiHua.ke))
+      tags.push({ type: "ke", label: "科", star: dailySiHua.ke });
+
+    const cycleIndex = Math.floor(i / 12) + 1;
+    const isCycleStart = i % 12 === 0;
+
+    data.push({
+      id: i,
+      dateObj: currentDate,
+      dateStr: `${currentDate.getMonth() + 1}/${currentDate.getDate()}`,
+      ganZhi: `${stem}${branch}`,
+      palace: dailyData.palace,
+      stars: starStr,
+      siHua: dailySiHua,
+      tags: tags,
+      score: score,
+      cycleIndex: cycleIndex,
+      isCycleStart: isCycleStart,
+      details: dailyData,
+    });
+  }
+  return data;
+};
+
+// ============================================================================
+// 3. UI 元件 (Components) - 確保置頂定義
+// ============================================================================
+
+// ★ ProfileDisplay: 靜態顯示
+const ProfileDisplay = ({ ganZhi }) => (
   <div className="mt-1 flex flex-col items-end gap-1 select-none">
     <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-full px-3 py-1.5 shadow-lg relative z-20">
       <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
       <span className="text-xs font-bold text-slate-300">丙午</span>
     </div>
-    {/* 移除前方圖示，純文字顯示 */}
     <div className="text-[10px] text-slate-500 font-mono tracking-tighter bg-slate-900/30 px-2 py-0.5 rounded border border-slate-800/50">
-      {ganZhi}
+      {typeof ganZhi === "string" ? ganZhi : ""}
     </div>
   </div>
 );
 
-// EnergyBar: 能量指數顯示元件 - 優化版 (加大字體，更換圖示)
-const EnergyBar = ({ score, level }: any) => (
+// ★ EnergyBar: 能量指數顯示元件 - 字體加大，圖示 LineChart
+const EnergyBar = ({ score, level }) => (
   <div className="flex items-center gap-3 w-full bg-slate-900/50 p-3 rounded-xl border border-slate-800/50 shadow-inner">
     <div className="flex-1">
       <div className="flex justify-between items-end mb-2">
-        {/* 字體加大，圖示改為折線圖 (LineChart) */}
         <span className="text-sm text-slate-400 font-bold flex items-center gap-2">
-          <LineChart size={16} className={level.color} /> 能量頻率
+          <LineChart size={16} className={level.color} /> 生命能量
         </span>
         <span className={`text-lg font-bold font-mono ${level.color}`}>
           {score > 0 ? `+${score}` : score}
@@ -578,7 +663,225 @@ const EnergyBar = ({ score, level }: any) => (
   </div>
 );
 
-const WisdomCard = ({ type, data, onClose, onRefresh }: any) => {
+// ★ ScoreDot: 折線圖點位 - 顯示數值，無互動
+const ScoreDot = ({ x, y, score, isCycleStart }) => (
+  <g>
+    {/* 週期分隔線 */}
+    {isCycleStart && (
+      <line
+        x1={x}
+        y1="0"
+        x2={x}
+        y2="150"
+        stroke="#475569"
+        strokeWidth="1"
+        strokeDasharray="4 2"
+        opacity="0.3"
+      />
+    )}
+
+    <circle
+      cx={x}
+      cy={y}
+      r={3}
+      fill={score >= 0 ? (score >= 20 ? "#fbbf24" : "#10b981") : "#f43f5e"}
+      stroke="#0f172a"
+      strokeWidth="2"
+    />
+    <text
+      x={x}
+      y={y - 8}
+      textAnchor="middle"
+      fontSize="8"
+      fill={score >= 0 ? (score >= 20 ? "#fbbf24" : "#10b981") : "#f43f5e"}
+      fontWeight="bold"
+      style={{ pointerEvents: "none" }}
+    >
+      {score > 0 ? `+${score}` : score}
+    </text>
+  </g>
+);
+
+const StatBox = ({ label, value, color = "text-white" }) => (
+  <div className="bg-slate-900 border border-slate-800 p-2 rounded-lg flex flex-col items-center">
+    <span className="text-[9px] text-slate-500 uppercase">{label}</span>
+    <span className={`text-base font-mono font-bold ${color}`}>{value}</span>
+  </div>
+);
+
+const DistributionChart = ({ data, mean, stdDev }) => {
+  if (!data || !data.bins) return null;
+  const { bins } = data;
+  const maxCount = Math.max(...bins.map((b) => b.count)) || 1;
+  const height = 180;
+  const width = 300;
+  const paddingX = 20;
+  const paddingBottom = 30;
+  const paddingTop = 20;
+  const barWidth = (width - 2 * paddingX) / bins.length - 4;
+
+  let pathD = "";
+  if (bins.length > 0 && stdDev > 0) {
+    const points = [];
+    const scaleY = maxCount / normalPdf(mean, mean, stdDev);
+    const graphHeight = height - paddingBottom - paddingTop;
+    for (let x = bins[0].min; x <= bins[bins.length - 1].max; x += 1) {
+      const yVal = normalPdf(x, mean, stdDev) * scaleY;
+      const xPercent =
+        (x - bins[0].min) / (bins[bins.length - 1].max - bins[0].min);
+      const svgX = xPercent * (width - 2 * paddingX) + paddingX;
+      const svgY = height - paddingBottom - (yVal / maxCount) * graphHeight;
+      points.push(`${svgX},${svgY}`);
+    }
+    pathD = "M" + points.join(" L");
+  }
+
+  return (
+    <div className="relative flex justify-center py-2 bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
+      <svg width={width} height={height}>
+        {[0.25, 0.5, 0.75].map((ratio) => (
+          <line
+            key={ratio}
+            x1={paddingX}
+            y1={
+              height -
+              paddingBottom -
+              ratio * (height - paddingBottom - paddingTop)
+            }
+            x2={width - paddingX}
+            y2={
+              height -
+              paddingBottom -
+              ratio * (height - paddingBottom - paddingTop)
+            }
+            stroke="#334155"
+            strokeWidth="1"
+            strokeDasharray="3 3"
+            opacity="0.3"
+          />
+        ))}
+        {bins.map((b, i) => {
+          const barHeight =
+            (b.count / maxCount) * (height - paddingBottom - paddingTop);
+          const xPos = paddingX + i * ((width - 2 * paddingX) / bins.length);
+          return (
+            <g key={i}>
+              <rect
+                x={xPos}
+                y={height - paddingBottom - barHeight}
+                width={barWidth}
+                height={barHeight}
+                fill={
+                  b.min >= 0 ? (b.min >= 20 ? "#fbbf24" : "#10b981") : "#f43f5e"
+                }
+                opacity="0.8"
+                rx="2"
+              />
+              {b.count > 0 && (
+                <text
+                  x={xPos + barWidth / 2}
+                  y={height - paddingBottom - barHeight - 5}
+                  textAnchor="middle"
+                  fontSize="10"
+                  fill="#cbd5e1"
+                  fontWeight="bold"
+                >
+                  {b.count}
+                </text>
+              )}
+              <text
+                x={xPos + barWidth / 2}
+                y={height - 10}
+                textAnchor="middle"
+                fontSize="9"
+                fill="#94a3b8"
+              >
+                {b.label}
+              </text>
+            </g>
+          );
+        })}
+        <path
+          d={pathD}
+          fill="none"
+          stroke="#60a5fa"
+          strokeWidth="2"
+          opacity="0.8"
+        />
+      </svg>
+    </div>
+  );
+};
+
+const DetailPanel = ({ data, onClose }) => {
+  if (!data) return null;
+  const { dateStr, ganZhi, palace, stars, score, tags } = data;
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-50 bg-slate-900 border-t border-slate-700 p-6 rounded-t-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-10">
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            {dateStr}{" "}
+            <span className="font-mono text-slate-400 text-base">{ganZhi}</span>
+          </h3>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-xs font-bold text-indigo-300 bg-indigo-900/30 px-2 py-0.5 rounded border border-indigo-500/20">
+              {palace}
+            </span>
+            <span
+              className={`text-xs px-2 py-0.5 rounded border ${
+                score >= 0
+                  ? "bg-emerald-900/30 border-emerald-500/30 text-emerald-400"
+                  : "bg-rose-900/30 border-rose-500/30 text-rose-400"
+              }`}
+            >
+              能量 {score}
+            </span>
+          </div>
+          <p className="text-sm text-slate-300 mt-3 font-bold leading-relaxed">
+            {stars}
+          </p>
+        </div>
+        <button onClick={onClose} className="p-1 -mr-2 -mt-2">
+          <X size={24} className="text-slate-500 hover:text-white" />
+        </button>
+      </div>
+      <div className="space-y-2 text-sm pt-2 border-t border-slate-800">
+        {tags.length > 0 ? (
+          tags.map((tag, idx) => (
+            <div
+              key={idx}
+              className={`flex items-center gap-2 p-2 rounded border ${
+                tag.type === "ji"
+                  ? "text-rose-400 bg-rose-900/10 border-rose-900/30"
+                  : tag.type === "lu"
+                  ? "text-amber-400 bg-amber-900/10 border-amber-900/30"
+                  : "text-purple-400 bg-purple-900/10 border-purple-900/30"
+              }`}
+            >
+              {tag.type === "ji" ? (
+                <AlertTriangle size={14} />
+              ) : (
+                <Sparkles size={14} />
+              )}
+              <span>
+                {tag.type === "ji" ? "警示" : "吉兆"}：
+                <strong>{tag.star}</strong> 化{tag.label}
+              </span>
+            </div>
+          ))
+        ) : (
+          <div className="flex items-center gap-2 text-slate-400 bg-slate-800/50 p-2 rounded">
+            <Info size={14} /> <span>今日平穩，依循星曜特質行事。</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ★ WisdomCard with Safety Check
+const WisdomCard = ({ type, data, onClose, onRefresh }) => {
   const [isFading, setIsFading] = useState(false);
 
   const handleRefresh = () => {
@@ -589,8 +892,11 @@ const WisdomCard = ({ type, data, onClose, onRefresh }: any) => {
     }, 300);
   };
 
+  // Safety check: if data is somehow missing
+  if (!data) return null;
+
   return (
-    <div className="animate-in fade-in zoom-in duration-300 bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl relative overflow-hidden flex flex-col max-h-[85vh]">
+    <div className="animate-in fade-in zoom-in duration-300 bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl relative overflow-hidden flex flex-col max-h-[85vh] z-[100]">
       <div
         className={`absolute top-0 right-0 w-48 h-48 rounded-full blur-3xl -mr-10 -mt-10 opacity-20 ${
           type === "anger"
@@ -670,9 +976,11 @@ const WisdomCard = ({ type, data, onClose, onRefresh }: any) => {
   );
 };
 
-// --- Main App ---
+// ============================================================================
+// 6. 主程式 (Official Release v1.0)
+// ============================================================================
 
-export default function App() {
+export default function SpiritPivotOfficialRelease() {
   const [dailyInfo, setDailyInfo] = useState({
     ganZhi: "",
     palace: "",
@@ -690,11 +998,20 @@ export default function App() {
     energyLevel: { label: "", color: "", barColor: "", percent: 0 },
   });
   const [todayDate, setTodayDate] = useState({ western: "", lunar: "" });
-  const [activeType, setActiveType] = useState<any>(null);
-  const [currentWisdom, setCurrentWisdom] = useState<any>(null);
-  const [lastWisdomIndex, setLastWisdomIndex] = useState<any>({});
+  const [activeType, setActiveType] = useState(null);
+  const [currentWisdom, setCurrentWisdom] = useState(null);
+  const [lastWisdomIndex, setLastWisdomIndex] = useState({});
   const [journalNote, setJournalNote] = useState("");
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState([]);
+
+  // 統計狀態
+  const [activeTab, setActiveTab] = useState("dashboard"); // dashboard | stats
+  const [stats, setStats] = useState(null);
+  const [chartData, setChartData] = useState(null);
+  const [cycleData, setCycleData] = useState([]);
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [extremeDays, setExtremeDays] = useState({ top: [], bottom: [] });
+  const scrollRef = useRef(null);
 
   useEffect(() => {
     const now = new Date();
@@ -716,23 +1033,22 @@ export default function App() {
     }
     setTodayDate({ western, lunar });
 
+    // A. 運算今日
     const { stem, branch, branchKey } = getPrecisionGanZhi(now);
     const dailyData = FULL_NATAL_CHART[branchKey];
     const dailySiHua = SI_HUA_TABLE[stem];
-
-    // 計算能量分數
     const score = calculateEnergyScore(dailyData, dailySiHua);
-
     const content = generateDailyContent(dailyData, dailySiHua, stem, score);
 
+    // ★ 關鍵防呆：確保 ganZhi 是字串
+    const ganZhiStr = `${stem}${branch}日`;
+
     setDailyInfo({
-      ganZhi: `${stem}${branch}日`,
+      ganZhi: ganZhiStr,
       palace: dailyData.palace,
       stars: content.displayStars,
-      summaryText: content.summaryText,
       actionText: content.actionText,
       displayStars: content.displayStars,
-      // @ts-ignore
       displaySiHua: content.statusText,
       statusText: content.statusText,
       highlightColor: content.highlightColor,
@@ -740,29 +1056,75 @@ export default function App() {
       bgOverlay: content.bgOverlay,
       statusBadgeBg: content.statusBadgeBg,
       statusBadgeBorder: content.statusBadgeBorder,
-      score: content.score,
-      energyLevel: content.energyLevel,
+      score: score,
+      energyLevel: getEnergyLevel(score),
+    });
+
+    // B. 批量運算 60 日數據
+    const startDate = new Date("2025-12-21T12:00:00"); // 鎖定甲子日開始
+    const cData = generateCycleData(startDate, 60);
+    setCycleData(cData);
+
+    // C. 統計運算
+    const scores = cData.map((d) => d.score);
+    const n = scores.length;
+    const sum = scores.reduce((a, b) => a + b, 0);
+    const mean = sum / n;
+
+    const squareDiffs = scores.map((v) => Math.pow(v - mean, 2));
+    const stdDev = Math.sqrt(squareDiffs.reduce((a, b) => a + b, 0) / n);
+
+    const cubedDiffs = scores.map((v) => Math.pow(v - mean, 3));
+    const skewness =
+      cubedDiffs.reduce((a, b) => a + b, 0) / n / Math.pow(stdDev, 3);
+
+    const sorted = [...scores].sort((a, b) => a - b);
+    const median =
+      n % 2 !== 0
+        ? sorted[Math.floor(n / 2)]
+        : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
+
+    setStats({
+      mean: mean.toFixed(1),
+      stdDev: stdDev.toFixed(1),
+      skewness: skewness.toFixed(2),
+      median,
+      max: sorted[n - 1],
+      min: sorted[0],
+    });
+    setChartData(createHistogramData(scores));
+
+    // 抓取極值
+    const sortedDays = [...cData].sort((a, b) => b.score - a.score);
+    setExtremeDays({
+      top: sortedDays.slice(0, 3),
+      bottom: sortedDays.slice(-3).reverse(),
     });
 
     const savedLogs = localStorage.getItem("spiritPivotMasterLogs");
     if (savedLogs) setLogs(JSON.parse(savedLogs));
   }, []);
 
-  const getRandomWisdom = (type: any) => {
+  const getRandomWisdom = (type) => {
+    // 防呆：確保 pool 存在且不為空
     const pool = WISDOM_LIBRARY[type] || WISDOM_LIBRARY["doubt"];
-    if (pool.length <= 1) return pool[0];
+    if (!pool || pool.length === 0) {
+      return { q: "靜心等待智慧降臨...", s: "觀自在菩薩...", a: "深呼吸。" };
+    }
+
     let newIndex;
     const lastIndex = lastWisdomIndex[type];
+
     let attempts = 0;
     do {
       newIndex = Math.floor(Math.random() * pool.length);
       attempts++;
     } while (newIndex === lastIndex && attempts < 5);
-    setLastWisdomIndex((prev: any) => ({ ...prev, [type]: newIndex }));
+    setLastWisdomIndex((prev) => ({ ...prev, [type]: newIndex }));
     return pool[newIndex];
   };
 
-  const handleCapture = (type: any) => {
+  const handleCapture = (type) => {
     setCurrentWisdom(getRandomWisdom(type));
     setActiveType(type);
   };
@@ -788,6 +1150,85 @@ export default function App() {
     localStorage.setItem("spiritPivotMasterLogs", JSON.stringify(updated));
     setActiveType(null);
     setJournalNote("");
+  };
+
+  const renderLineChart = () => {
+    if (cycleData.length === 0) return null;
+    const pointSpacing = 50;
+    const width = cycleData.length * pointSpacing;
+    const height = 160;
+    const padding = 20;
+    const maxScore = 50;
+    const minScore = -40;
+    const range = maxScore - minScore;
+    const getY = (score) =>
+      height - padding - ((score - minScore) / range) * (height - 2 * padding);
+
+    let pathD = `M ${padding} ${getY(cycleData[0].score)}`;
+    cycleData.forEach(
+      (d, i) => (pathD += ` L ${padding + i * pointSpacing} ${getY(d.score)}`)
+    );
+
+    return (
+      <div className="overflow-x-auto custom-scrollbar pb-2" ref={scrollRef}>
+        <div
+          style={{ width: `${width + padding * 2}px` }}
+          className="relative h-[180px]"
+        >
+          <div
+            className="absolute left-0 right-0 border-t border-slate-700 border-dashed"
+            style={{ top: `${getY(0)}px` }}
+          ></div>
+          <svg
+            width={width + padding * 2}
+            height={height}
+            className="absolute top-0 left-0"
+          >
+            <path
+              d={pathD}
+              fill="none"
+              stroke="#94a3b8"
+              strokeWidth="2"
+              strokeOpacity="0.6"
+            />
+            {cycleData.map((d, i) => (
+              <ScoreDot
+                key={i}
+                x={padding + i * pointSpacing}
+                y={getY(d.score)}
+                score={d.score}
+                isActive={selectedDay?.id === d.id}
+                isCycleStart={d.isCycleStart}
+                onClick={() => setSelectedDay(d)}
+              />
+            ))}
+          </svg>
+          <div
+            className="absolute bottom-0 left-0 flex h-6 items-end"
+            style={{ paddingLeft: `${padding - 20}px` }}
+          >
+            {cycleData.map((d, i) => (
+              <div key={i} className="w-[50px] text-center">
+                {d.isCycleStart && (
+                  <span className="text-[9px] text-indigo-400 bg-indigo-900/50 px-1 rounded block mb-1">
+                    C{d.cycleIndex}
+                  </span>
+                )}
+                <span
+                  className={`text-[9px] ${
+                    selectedDay?.id === d.id
+                      ? "text-white font-bold"
+                      : "text-slate-600"
+                  }`}
+                >
+                  {d.dateStr}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   if (!dailyInfo.palace)
@@ -826,163 +1267,275 @@ export default function App() {
           </div>
         </div>
 
-        {/* Profile Display */}
+        {/* Profile Display (Non-interactive) */}
         <ProfileDisplay ganZhi={dailyInfo.ganZhi} />
       </header>
 
+      {/* Tab Navigation */}
+      <div className="px-6 pb-2 z-10 sticky top-[88px] bg-slate-950/90 backdrop-blur flex gap-6 text-xs font-bold text-slate-500 border-b border-slate-800">
+        <button
+          onClick={() => setActiveTab("dashboard")}
+          className={`pb-2 border-b-2 transition-colors ${
+            activeTab === "dashboard"
+              ? "text-white border-amber-500"
+              : "hover:text-slate-300 border-transparent"
+          }`}
+        >
+          今日導航
+        </button>
+        <button
+          onClick={() => setActiveTab("stats")}
+          className={`pb-2 border-b-2 transition-colors ${
+            activeTab === "stats"
+              ? "text-white border-emerald-500"
+              : "hover:text-slate-300 border-transparent"
+          }`}
+        >
+          關鍵統計
+        </button>
+      </div>
+
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto p-5 z-10 custom-scrollbar pb-24">
-        {/* Daily Fate - The Zen UI Block (Horizontal Compact) */}
-        <section className="mb-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <div className="flex items-center gap-2 mb-2">
-            <MapPin size={16} className="text-amber-500" />
-            <h2 className="text-sm font-bold text-slate-300">今日導航</h2>
-          </div>
-
-          <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-2xl p-5 relative overflow-hidden shadow-xl flex flex-row items-center justify-center gap-3 flex-wrap">
-            <div className="text-xs font-bold tracking-widest text-indigo-300 bg-indigo-900/30 px-2 py-1 rounded border border-indigo-500/20 whitespace-nowrap">
-              {dailyInfo.palace}
-            </div>
-            <h3 className="text-xl font-bold text-white tracking-wide drop-shadow-md whitespace-nowrap text-center">
-              {dailyInfo.displayStars}
-            </h3>
-            {dailyInfo.statusText !== "平穩" && (
-              <div
-                className={`text-xs font-bold px-2 py-1 rounded border whitespace-nowrap ${dailyInfo.statusBadgeBg} ${dailyInfo.statusBadgeBorder} ${dailyInfo.highlightColor}`}
-              >
-                {dailyInfo.statusText}
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* Energy Bar Section (Updated) */}
-        <section className="mb-4 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-50">
-          <EnergyBar score={dailyInfo.score} level={dailyInfo.energyLevel} />
-        </section>
-
-        {/* Action Guide - Zen Style (No Header, Spacing Reduced) */}
-        <section className="mb-4 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
-          <div
-            className={`bg-slate-950/60 border rounded-2xl p-6 relative overflow-hidden ${dailyInfo.borderColor}`}
-          >
-            <div
-              className={`absolute top-0 left-0 w-1 h-full ${dailyInfo.bgOverlay.replace(
-                "/50",
-                ""
-              )}`}
-            ></div>
-            {/* Summary Text */}
-            <p className="text-sm text-slate-200 font-bold leading-relaxed mb-4 whitespace-pre-wrap border-b border-slate-800 pb-3">
-              {dailyInfo.summaryText}
-            </p>
-            {/* Detail Action Text */}
-            <p className="text-sm text-slate-400 leading-loose text-justify font-serif tracking-wide whitespace-pre-wrap">
-              {dailyInfo.actionText}
-            </p>
-          </div>
-        </section>
-
-        {/* Instant Interceptor */}
-        <section>
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <Infinity size={16} className="text-indigo-400" />
-              <h2 className="text-sm font-bold text-slate-300">當下覺察</h2>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <button
-              onClick={() => handleCapture("anger")}
-              className="group p-3 bg-slate-900 border border-slate-800 rounded-xl hover:border-red-500 hover:bg-red-950/30 transition-all active:scale-95 flex flex-col items-center"
-            >
-              <Flame
-                size={20}
-                className="text-slate-500 group-hover:text-red-500 mb-2 transition-colors"
-              />
-              <span className="text-xs text-slate-400">嗔 (火)</span>
-            </button>
-            <button
-              onClick={() => handleCapture("greed")}
-              className="group p-3 bg-slate-900 border border-slate-800 rounded-xl hover:border-blue-500 hover:bg-blue-950/30 transition-all active:scale-95 flex flex-col items-center"
-            >
-              <CloudRain
-                size={20}
-                className="text-slate-500 group-hover:text-blue-500 mb-2 transition-colors"
-              />
-              <span className="text-xs text-slate-400">貪 (水)</span>
-            </button>
-            <button
-              onClick={() => handleCapture("ignorance")}
-              className="group p-3 bg-slate-900 border border-slate-800 rounded-xl hover:border-purple-500 hover:bg-purple-950/30 transition-all active:scale-95 flex flex-col items-center"
-            >
-              <Wind
-                size={20}
-                className="text-slate-500 group-hover:text-purple-500 mb-2 transition-colors"
-              />
-              <span className="text-xs text-slate-400">癡 (風)</span>
-            </button>
-            <button
-              onClick={() => handleCapture("pride")}
-              className="col-span-1 group p-3 bg-slate-900 border border-slate-800 rounded-xl hover:border-amber-500 hover:bg-amber-950/30 transition-all active:scale-95 flex flex-col items-center"
-            >
-              <Mountain
-                size={20}
-                className="text-slate-500 group-hover:text-amber-500 mb-2 transition-colors"
-              />
-              <span className="text-xs text-slate-400">慢 (山)</span>
-            </button>
-            <button
-              onClick={() => handleCapture("doubt")}
-              className="col-span-2 group p-3 bg-slate-900 border border-slate-800 rounded-xl hover:border-slate-400 hover:bg-slate-800 transition-all active:scale-95 flex flex-row items-center justify-center gap-3"
-            >
-              <Activity
-                size={20}
-                className="text-slate-500 group-hover:text-slate-300"
-              />
-              <span className="text-xs text-slate-400 group-hover:text-slate-300">
-                疑 (霧) · 焦慮不安
-              </span>
-            </button>
-          </div>
-        </section>
-
-        {/* History */}
-        {logs.length > 0 && (
-          <div className="mt-6 pt-4 border-t border-slate-800">
-            <h4 className="text-[10px] uppercase tracking-widest text-slate-600 mb-3">
-              Today's Practice
-            </h4>
-            <div className="space-y-2">
-              {logs.slice(0, 3).map((log) => (
-                <div
-                  key={log.id}
-                  className="text-xs flex justify-between text-slate-500 bg-slate-900/50 p-2 rounded"
-                >
-                  <span>
-                    {log.type === "anger"
-                      ? "轉化嗔火"
-                      : log.type === "greed"
-                      ? "轉化貪執"
-                      : log.type === "ignorance"
-                      ? "轉化愚癡"
-                      : log.type === "pride"
-                      ? "轉化我慢"
-                      : "轉化疑懼"}
-                  </span>
-                  <span>{log.date}</span>
+        {/* VIEW 1: DASHBOARD (Home) */}
+        {activeTab === "dashboard" && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* Daily Fate */}
+            <section className="mb-4">
+              <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-2xl p-5 relative overflow-hidden shadow-xl flex flex-row items-center justify-center gap-3 flex-wrap">
+                <div className="text-xs font-bold tracking-widest text-indigo-300 bg-indigo-900/30 px-2 py-1 rounded border border-indigo-500/20 whitespace-nowrap">
+                  {dailyInfo.palace}
                 </div>
-              ))}
-            </div>
+                <h3 className="text-xl font-bold text-white tracking-wide drop-shadow-md whitespace-nowrap text-center">
+                  {dailyInfo.displayStars}
+                </h3>
+                {dailyInfo.statusText !== "平穩" && (
+                  <div
+                    className={`text-xs font-bold px-2 py-1 rounded border whitespace-nowrap ${dailyInfo.statusBadgeBg} ${dailyInfo.statusBadgeBorder} ${dailyInfo.highlightColor}`}
+                  >
+                    {dailyInfo.statusText}
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {/* Energy Bar */}
+            <section className="mb-4">
+              <EnergyBar
+                score={dailyInfo.score}
+                level={dailyInfo.energyLevel}
+              />
+            </section>
+
+            {/* Action Guide */}
+            <section className="mb-8">
+              <div
+                className={`bg-slate-950/60 border rounded-2xl p-6 relative overflow-hidden ${dailyInfo.borderColor}`}
+              >
+                <div
+                  className={`absolute top-0 left-0 w-1 h-full ${dailyInfo.bgOverlay.replace(
+                    "/50",
+                    ""
+                  )}`}
+                ></div>
+                <p className="text-sm text-slate-300 leading-loose text-justify font-serif tracking-wide whitespace-pre-wrap">
+                  {dailyInfo.actionText}
+                </p>
+              </div>
+            </section>
+
+            {/* Instant Interceptor */}
+            <section>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Infinity size={16} className="text-indigo-400" />
+                  <h2 className="text-sm font-bold text-slate-300">當下覺察</h2>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  onClick={() => handleCapture("anger")}
+                  className="group p-3 bg-slate-900 border border-slate-800 rounded-xl hover:border-red-500 hover:bg-red-950/30 transition-all active:scale-95 flex flex-col items-center"
+                >
+                  <Flame
+                    size={20}
+                    className="text-slate-500 group-hover:text-red-500 mb-2 transition-colors"
+                  />
+                  <span className="text-xs text-slate-400">嗔 (火)</span>
+                </button>
+                <button
+                  onClick={() => handleCapture("greed")}
+                  className="group p-3 bg-slate-900 border border-slate-800 rounded-xl hover:border-blue-500 hover:bg-blue-950/30 transition-all active:scale-95 flex flex-col items-center"
+                >
+                  <CloudRain
+                    size={20}
+                    className="text-slate-500 group-hover:text-blue-500 mb-2 transition-colors"
+                  />
+                  <span className="text-xs text-slate-400">貪 (水)</span>
+                </button>
+                <button
+                  onClick={() => handleCapture("ignorance")}
+                  className="group p-3 bg-slate-900 border border-slate-800 rounded-xl hover:border-purple-500 hover:bg-purple-950/30 transition-all active:scale-95 flex flex-col items-center"
+                >
+                  <Wind
+                    size={20}
+                    className="text-slate-500 group-hover:text-purple-500 mb-2 transition-colors"
+                  />
+                  <span className="text-xs text-slate-400">癡 (風)</span>
+                </button>
+                <button
+                  onClick={() => handleCapture("pride")}
+                  className="col-span-1 group p-3 bg-slate-900 border border-slate-800 rounded-xl hover:border-amber-500 hover:bg-amber-950/30 transition-all active:scale-95 flex flex-col items-center"
+                >
+                  <Mountain
+                    size={20}
+                    className="text-slate-500 group-hover:text-amber-500 mb-2 transition-colors"
+                  />
+                  <span className="text-xs text-slate-400">慢 (山)</span>
+                </button>
+                <button
+                  onClick={() => handleCapture("doubt")}
+                  className="col-span-2 group p-3 bg-slate-900 border border-slate-800 rounded-xl hover:border-slate-400 hover:bg-slate-800 transition-all active:scale-95 flex flex-row items-center justify-center gap-3"
+                >
+                  <Activity
+                    size={20}
+                    className="text-slate-500 group-hover:text-slate-300"
+                  />
+                  <span className="text-xs text-slate-400 group-hover:text-slate-300">
+                    疑 (霧) · 焦慮不安
+                  </span>
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* VIEW 2: STATISTICS (Analysis) */}
+        {activeTab === "stats" && stats && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+            {/* 60-Day Trend Chart (Moved to Top) */}
+            <section className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-inner">
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="text-xs font-bold text-slate-400 flex items-center gap-1">
+                  <TrendingUp size={12} /> 能量趨勢 (12/21 起)
+                </h2>
+                <div className="flex gap-2 text-[9px] text-slate-500">
+                  <span className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-amber-500"></div>旺
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-rose-500"></div>陷
+                  </span>
+                </div>
+              </div>
+              {renderLineChart()}
+            </section>
+
+            {/* Extreme Values - Outliers */}
+            <section className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-3 text-sm font-bold text-slate-300">
+                <AlertTriangle size={16} className="text-rose-500" />{" "}
+                關鍵吉凶提醒
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="text-[10px] text-slate-500 uppercase font-bold text-center">
+                    ⚠️ 避險日 (Bottom 3)
+                  </div>
+                  {extremeDays.bottom.map((d, i) => (
+                    <div
+                      key={i}
+                      className="flex justify-between items-center text-xs bg-rose-950/30 p-2 rounded border border-rose-900/50"
+                    >
+                      <span className="text-slate-300">{d.dateStr}</span>
+                      <span className="font-mono text-rose-400 font-bold">
+                        {d.score}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-2">
+                  <div className="text-[10px] text-slate-500 uppercase font-bold text-center">
+                    🚀 機遇日 (Top 3)
+                  </div>
+                  {extremeDays.top.map((d, i) => (
+                    <div
+                      key={i}
+                      className="flex justify-between items-center text-xs bg-amber-950/30 p-2 rounded border border-amber-900/50"
+                    >
+                      <span className="text-slate-300">{d.dateStr}</span>
+                      <span className="font-mono text-amber-400 font-bold">
+                        +{d.score}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            {/* Distribution */}
+            <section>
+              <div className="flex items-center gap-2 mb-3 text-sm font-bold text-slate-300">
+                <BarChart3 size={16} className="text-indigo-500" /> 整體運勢分佈
+              </div>
+              <div className="bg-slate-800/50 border border-slate-700 p-4 rounded-2xl">
+                <DistributionChart
+                  data={chartData}
+                  mean={parseFloat(stats.mean)}
+                  stdDev={parseFloat(stats.stdDev)}
+                />
+                <div className="mt-4 text-xs text-slate-400 leading-relaxed text-justify border-t border-slate-700/50 pt-3">
+                  <strong className="text-white block mb-1">
+                    統計解讀 (Skew: {stats.skewness})
+                  </strong>
+                  {Math.abs(stats.skewness) < 0.5
+                    ? "分佈高度對稱，運勢穩定。大部分日子能量平穩，極端好壞少見。"
+                    : stats.skewness > 0
+                    ? "正偏態（右偏）。大部分日子分數一般，但有少數幾天「極強運」拉高了平均。需把握那幾天。"
+                    : "負偏態（左偏）。大部分日子運勢順暢，但存在少數「極凶日」拉低了平均。防守比進攻重要。"}
+                </div>
+              </div>
+            </section>
+
+            {/* Stats Matrix */}
+            <section>
+              <div className="flex items-center gap-2 mb-3 text-sm font-bold text-slate-300">
+                <Sigma size={16} className="text-amber-500" /> 核心數據總覽
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                <StatBox
+                  label="平均運勢"
+                  value={stats.mean > 0 ? `+${stats.mean}` : stats.mean}
+                  color="text-white"
+                />
+                <StatBox
+                  label="中間水準"
+                  value={stats.median > 0 ? `+${stats.median}` : stats.median}
+                  color="text-emerald-400"
+                />
+                <StatBox
+                  label="波動程度"
+                  value={stats.stdDev}
+                  color="text-amber-400"
+                />
+                <StatBox
+                  label="高低落差"
+                  value={stats.max - stats.min}
+                  color="text-indigo-400"
+                />
+              </div>
+            </section>
           </div>
         )}
       </main>
 
+      {/* Detail Panel for Chart */}
+      <DetailPanel data={selectedDay} onClose={() => setSelectedDay(null)} />
+
       {/* Wisdom Modal */}
       {activeType && currentWisdom && (
         <div
-          className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md p-5 flex flex-col justify-center animate-in fade-in"
+          className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-md p-5 flex flex-col justify-center animate-in fade-in"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setActiveType(null);
