@@ -749,7 +749,7 @@ export default function SpiritPivotV3_3() {
         <div className="flex justify-between items-center">
           <h1 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 flex items-center gap-2">
             <Compass size={20} className="text-amber-500" />
-            天樞 · 覺行
+            天樞 · 覺行 V3
           </h1>
           <div className="text-right">
             <div className="text-lg font-serif text-amber-500/90">
